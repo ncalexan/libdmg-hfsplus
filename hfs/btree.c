@@ -195,6 +195,7 @@ static void* searchNode(BTree* tree, uint32_t root, BTKey* searchKey, int *exact
     recordOffset = getRecordOffset(i, root, tree);
     key = READ_KEY(tree, recordOffset, tree->io);
     recordDataOffset = recordOffset + key->keyLength + sizeof(key->keyLength);
+    lastRecordDataOffset = recordDataOffset;
     
     res = COMPARE(tree, key, searchKey);
 	free(key);
@@ -220,8 +221,6 @@ static void* searchNode(BTree* tree, uint32_t root, BTKey* searchKey, int *exact
     } else if(res > 0) {
       break;
     }
-
-    lastRecordDataOffset = recordDataOffset;
   }
 
   if(lastRecordDataOffset == 0) {
