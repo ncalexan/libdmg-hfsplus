@@ -89,6 +89,15 @@ static BTKey* attrKeyRead(off_t offset, io_func* io) {
 	return (BTKey*)key;
 }
 
+static void attrKeyPrint(BTKey* toPrint) {
+	HFSPlusAttrKey* key;
+
+	key = (HFSPlusAttrKey*)toPrint;
+
+	printf("attribute%d:%d:", key->fileID, key->startBlock);
+	printUnicode(&key->name);
+}
+
 static int attrKeyWrite(off_t offset, BTKey* toWrite, io_func* io) {
 	HFSPlusAttrKey* key;
 	uint16_t keyLength;
@@ -115,16 +124,11 @@ static int attrKeyWrite(off_t offset, BTKey* toWrite, io_func* io) {
 
 	free(key);
 
+	printf("attrKeyWrite: offset: %llx, ", offset);
+	attrKeyPrint(toWrite);
+	printf("\n");
+
 	return TRUE;
-}
-
-static void attrKeyPrint(BTKey* toPrint) {
-	HFSPlusAttrKey* key;
-
-	key = (HFSPlusAttrKey*)toPrint;
-
-	printf("attribute%d:%d:", key->fileID, key->startBlock);
-	printUnicode(&key->name);
 }
 
 static BTKey* attrDataRead(off_t offset, io_func* io) {
