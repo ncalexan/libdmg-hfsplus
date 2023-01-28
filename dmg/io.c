@@ -21,6 +21,23 @@
 // There's always a large-ish one at the end, and a tiny 2 sector one at the end too, to take care of the space after
 // the backup volume header. No frakking clue how they go about determining how to do that.
 
+static char const *
+FindStrInBuf(char const * buf, size_t bufLen, char const * str)
+{
+  size_t index = 0;
+  while (index < bufLen) {
+    char const * result = strstr(buf + index, str);
+    if (result) {
+      return result;
+    }
+    while ((buf[index] != '\0') && (index < bufLen)) {
+      index++;
+    }
+    index++;
+  }
+  return NULL;
+}
+
 BLKXTable* insertBLKX(AbstractFile* out, AbstractFile* in, uint32_t firstSectorNumber, uint32_t numSectors, uint32_t blocksDescriptor,
 			uint32_t checksumType, ChecksumFunc uncompressedChk, void* uncompressedChkToken, ChecksumFunc compressedChk,
 			void* compressedChkToken, Volume* volume, int addComment) {
@@ -211,13 +228,19 @@ BLKXTable* insertBLKX(AbstractFile* out, AbstractFile* in, uint32_t firstSectorN
 		strm.avail_out = bufferSize;
 		strm.next_out = (char*)outBuffer;
 
+		printf("before BZ2_bzCompress: (%p, %d)\n", inBuffer, amountRead);
 		ASSERT((ret = BZ2_bzCompress(&strm, BZ_FINISH)) != BZ_SEQUENCE_ERROR, "BZ2_bzCompress/BZ_SEQUENCE_ERROR");
 		if(ret != BZ_STREAM_END) {
 			ASSERT(FALSE, "BZ2_bzCompress");
 		}
 		have = bufferSize - strm.avail_out;
 
-		if((have / SECTOR_SIZE) >= (blkx->runs[curRun].sectorCount - 15)) {
+		// TODO: what about when sectors align badly?
+		bool keepRaw = NULL != FindStrInBuf(inBuffer, amountRead, "__MOZILLA__");
+		printf("keepRaw = %d (%p, %d)\n", keepRaw, inBuffer, amountRead);
+
+		if(keepRaw || ((have / SECTOR_SIZE) >= (blkx->runs[curRun].sectorCount - 15))) {
+			printf("Setting type = BLOCK_RAW\n");
 			blkx->runs[curRun].type = BLOCK_RAW;
 			ASSERT(out->write(out, inBuffer, blkx->runs[curRun].sectorCount * SECTOR_SIZE) == (blkx->runs[curRun].sectorCount * SECTOR_SIZE), "fwrite");
 			blkx->runs[curRun].compLength += blkx->runs[curRun].sectorCount * SECTOR_SIZE;
@@ -226,6 +249,7 @@ BLKXTable* insertBLKX(AbstractFile* out, AbstractFile* in, uint32_t firstSectorN
 				(*compressedChk)(compressedChkToken, inBuffer, blkx->runs[curRun].sectorCount * SECTOR_SIZE);
 
 		} else {
+			printf("Keeping type = BLOCK_BZIP2\n");
 			ASSERT(out->write(out, outBuffer, have) == have, "fwrite");
 
 			if(compressedChk)
