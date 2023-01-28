@@ -1455,6 +1455,10 @@ static uint32_t removeRecord(BTree* tree, uint32_t root, BTKey* searchKey, int* 
   
   if(nodeToTraverse == 0) {
     nodeToTraverse = getNodeNumberFromPointerRecord(lastRecordDataOffset, tree->io);
+    if(nodeToTraverse == root) {
+      // Avoid infinite recursion.
+      return 0;
+    }
   }
   
   if(i == descriptor->numRecords) {
