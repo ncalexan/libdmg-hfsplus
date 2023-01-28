@@ -236,7 +236,7 @@ void cmd_getattr(Volume* volume, int argc, const char *argv[]) {
 	HFSPlusCatalogRecord* record;
 
 	if(argc < 3) {
-		printf("Not enough arguments");
+		printf("Not enough arguments: getattr <path> <attribute-name>");
 		return;
 	}
 
@@ -262,7 +262,48 @@ void cmd_getattr(Volume* volume, int argc, const char *argv[]) {
 	} else {
 		printf("No such file or directory\n");
 	}
-	
+
+	free(record);
+}
+
+void cmd_setattr(Volume* volume, int argc, const char *argv[]) {
+	HFSPlusCatalogRecord* record;
+
+	if(argc < 4) {
+		printf("Not enough arguments: setattr <path> <attribute-name> <attribute-value>");
+		return;
+	}
+
+	record = getRecordFromPath(argv[1], volume, NULL, NULL);
+
+	if(record != NULL) {
+		HFSCatalogNodeID id;
+		uint8_t* data;
+		size_t size;
+		if(record->recordType == kHFSPlusFileRecord)
+			id = ((HFSPlusCatalogFile*)record)->fileID;
+		else
+			id = ((HFSPlusCatalogFolder*)record)->folderID;
+
+		// Note: this doesn't handle embedded nulls, string encodings, etc.
+		ASSERT(setAttribute(volume, id, argv[2], argv[3], strlen(argv[3])), "setAttribute");
+	} else {
+		printf("No such file or directory\n");
+	}
+
+	if(record->recordType == kHFSPlusFolderRecord) {
+		// Maybe hasDateAdded mask?
+		((HFSPlusCatalogFolder*)record)->flags |= kHFSHasAttributesMask;
+		printf("%x\n", ((HFSPlusCatalogFolder*)record)->flags);
+	} else if(record->recordType == kHFSPlusFileRecord) {
+		((HFSPlusCatalogFile*)record)->flags |= kHFSHasAttributesMask;
+		printf("%x\n", ((HFSPlusCatalogFile*)record)->flags);
+	} else {
+		printf("unknown record type %x\n", record->recordType);
+	}
+
+	updateCatalog(volume, record);
+
 	free(record);
 }
 
@@ -329,11 +370,19 @@ int main(int argc, const char *argv[]) {
 			cmd_grow(volume, argc - 2, argv + 2);
 		} else if(strcmp(argv[2], "getattr") == 0) {
 			cmd_getattr(volume, argc - 2, argv + 2);
+		} else if(strcmp(argv[2], "setattr") == 0) {
+			cmd_setattr(volume, argc - 2, argv + 2);
 		} else if(strcmp(argv[2], "debug") == 0) {
 			if(argc > 3 && strcmp(argv[3], "verbose") == 0) {
 				debugBTree(volume->catalogTree, TRUE);
 			} else {
 				debugBTree(volume->catalogTree, FALSE);
+			}
+		} else if(strcmp(argv[2], "debugattrs") == 0) {
+			if(argc > 3 && strcmp(argv[3], "verbose") == 0) {
+				debugBTree(volume->attrTree, TRUE);
+			} else {
+				debugBTree(volume->attrTree, FALSE);
 			}
 		}
 	}
