@@ -64,6 +64,12 @@ static int attrCompare(BTKey* vLeft, BTKey* vRight) {
 }
 
 #define UNICODE_START (sizeof(uint16_t) + sizeof(uint16_t) + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint16_t))
+// 2 + 2 + 4 + 4 + 2
+/* uint16_t     keyLength; */
+/* uint16_t     pad; */
+/* uint32_t     fileID; */
+/* uint32_t     startBlock; */
+/* HFSUniStr255 name; */
 
 static BTKey* attrKeyRead(off_t offset, io_func* io) {
 	int i;

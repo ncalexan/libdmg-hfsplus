@@ -231,9 +231,17 @@ static int rawFileWrite(io_func* io,off_t location, size_t size, void *buffer) {
 
 	if (rawFile->id == kHFSAttributesFileID) {
 		printf("rawFileWrite: location: %llx, size: %zu\n", location, size);
-		if (location == 0x3ffc) {
-			hfs_panic("foo");
+		printf("[");
+		for (int foo = 0; foo < size; foo++) {
+			printf("0x%02x ", ((unsigned char*) buffer)[foo]);
+			if (foo % 0xf == 0xe) {
+				printf("\n ");
+			}
 		}
+		printf("]\n");
+		/* if (size == 2) { //  || location == 0x3ffc */
+		/* 	printf("0x%02x 0x%02x\n", ((unsigned char*) buffer)[0], ((unsigned char*) buffer)[1]); */
+		/* } */
 	}
 
 	if(rawFile->forkData->logicalSize < (location + size)) {
