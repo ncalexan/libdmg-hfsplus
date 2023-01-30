@@ -1350,6 +1350,8 @@ int addToBTree(BTree* tree, BTKey* searchKey, size_t length, unsigned char* cont
     
     offset = 14;
     freeOffset = offset + sizeof(searchKey->keyLength) + searchKey->keyLength + length;
+    /* // XXX why? */
+    /* freeOffset += 1; */
     
     ASSERT(WRITE_KEY(tree, tree->headerRec->rootNode * tree->headerRec->nodeSize + offset, searchKey, tree->io), "WRITE_KEY");    
     ASSERT(WRITE(tree->io, tree->headerRec->rootNode * tree->headerRec->nodeSize + offset + sizeof(searchKey->keyLength) + searchKey->keyLength,
