@@ -111,13 +111,15 @@ void writeUDIFResourceFile(AbstractFile* file, UDIFResourceFile* o) {
   writeUInt32(file, o->fUDIFSegmentCount);
   writeUDIFID(file, &(o->fUDIFSegmentID));
   
+  printf("fUDIFDataForkChecksum: 0x%llx\n", file->tell(file));
   writeUDIFChecksum(file, &(o->fUDIFDataForkChecksum));
   
   writeUInt64(file, o->fUDIFXMLOffset);
   writeUInt64(file, o->fUDIFXMLLength);
   
   ASSERT(file->write(file, &(o->reserved1), 0x78) == 0x78, "fwrite");
-  
+
+  printf("fUDIFMasterChecksum: 0x%llx\n", file->tell(file));
   writeUDIFChecksum(file, &(o->fUDIFMasterChecksum));
   
   writeUInt32(file, o->fUDIFImageVariant);

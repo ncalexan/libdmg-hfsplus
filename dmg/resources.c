@@ -407,10 +407,12 @@ static void writeNSizResource(NSizResource* data, char* buffer) {
   
   strcat(buffer, plistHeader);
   if(data->sha1Digest != NULL) {
-    sha1Buffer = convertBase64(data->sha1Digest, 20, 1, 42);
-    sprintf(itemBuffer, "\t<key>SHA-1-digest</key>\n\t<data>\n%s\t</data>\n", sha1Buffer);
-    free(sha1Buffer);
-    strcat(buffer, itemBuffer);
+    printf("SKIPPING SHA1DIGEST\n");
+    /* data->sha1Digest[1] = 0; */
+    /* sha1Buffer = convertBase64(data->sha1Digest, 20, 1, 42); */
+    /* sprintf(itemBuffer, "\t<key>SHA-1-digest</key>\n\t<data>\n%s\t</data>\n", sha1Buffer); */
+    /* free(sha1Buffer); */
+    /* strcat(buffer, itemBuffer); */
   }
   sprintf(itemBuffer, "\t<key>block-checksum-2</key>\n\t<integer>%d</integer>\n", (int32_t)(data->blockChecksum2));
   strcat(buffer, itemBuffer);

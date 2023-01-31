@@ -39,6 +39,13 @@ Generate comparison HFSs:
   file: /b
   Setting permissions to 100644 for /b
   $ $BUILDDIR/hfs/hfsplus output/stageda.hfs setattr a 'attr-key-a' 'attr-value-a'
+  $ cp $TESTDIR/empty.hfs output/stagedap.hfs
+  $ $BUILDDIR/hfs/hfsplus output/stagedap.hfs addall stagedir
+  file: /a
+  Setting permissions to 100644 for /a
+  file: /b
+  Setting permissions to 100644 for /b
+  $ $BUILDDIR/hfs/hfsplus output/stagedap.hfs setattr a 'attr-key-a' 'attr-value-p'
   $ cp $TESTDIR/empty.hfs output/stagedab.hfs
   $ $BUILDDIR/hfs/hfsplus output/stagedab.hfs addall stagedir
   file: /a

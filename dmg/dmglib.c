@@ -72,6 +72,7 @@ uint32_t calculateMasterChecksum(ResourceKey* resources) {
 	while(data != NULL) {
 		blkx = (BLKXTable*) data->data;
 		if(blkx->checksum.type == CHECKSUM_UDIF_CRC32) {
+			printf("calculateMasterChecksum: blkxNum=%d, name=%s\n", blkxNum, data->name);
 			buffer[(blkxNum * 4) + 0] = (blkx->checksum.data[0] >> 24) & 0xff;
 			buffer[(blkxNum * 4) + 1] = (blkx->checksum.data[0] >> 16) & 0xff;
 			buffer[(blkxNum * 4) + 2] = (blkx->checksum.data[0] >> 8) & 0xff;
