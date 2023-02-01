@@ -1356,6 +1356,15 @@ int addToBTree(BTree* tree, BTKey* searchKey, size_t length, unsigned char* cont
     
     offset = 14;
     freeOffset = offset + sizeof(searchKey->keyLength) + searchKey->keyLength + length;
+    // XXX why?  See
+    // https://developer.apple.com/library/archive/technotes/tn/tn1150.html:
+    // "IMPORTANT: The list of record offsets always contains one more
+    // entry than there is records in the node. This entry contains
+    // the offset to the first byte of free space in the node, and
+    // thus indicates the size of the last record in the node. If
+    // there is no free space in the node, the entry contains its own
+    // byte offset from the start of the node."
+    freeOffset += 1;
     
     ASSERT(WRITE_KEY(tree, tree->headerRec->rootNode * tree->headerRec->nodeSize + offset, searchKey, tree->io), "WRITE_KEY");    
     ASSERT(WRITE(tree->io, tree->headerRec->rootNode * tree->headerRec->nodeSize + offset + sizeof(searchKey->keyLength) + searchKey->keyLength,
