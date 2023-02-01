@@ -194,6 +194,10 @@ static void* searchNode(BTree* tree, uint32_t root, BTKey* searchKey, int *exact
   for(i = 0; i < descriptor->numRecords; i++) {
     recordOffset = getRecordOffset(i, root, tree);
     key = READ_KEY(tree, recordOffset, tree->io);
+    /* printf("searchNode: key\n"); */
+    /* tree->keyPrint(key); */
+    /* printf("\n"); */
+
     recordDataOffset = recordOffset + key->keyLength + sizeof(key->keyLength);
     
     res = COMPARE(tree, key, searchKey);
@@ -224,10 +228,11 @@ static void* searchNode(BTree* tree, uint32_t root, BTKey* searchKey, int *exact
     lastRecordDataOffset = recordDataOffset;
   }
 
-  if(lastRecordDataOffset == 0) {
-    hfs_panic("BTree inconsistent!");
-    return NULL;
-  }
+  /* if(lastRecordDataOffset == 0) { */
+  /*   printf("BTree inconsistent! (numRecords=%d, kind=%d)", descriptor->numRecords, descriptor->kind); */
+  /*   // hfs_panic("BTree inconsistent! (numRecords: %d)"); */
+  /*   return NULL; */
+  /* } */
   
   if(descriptor->kind == kBTLeafNode) {        
     if(nodeNumber != NULL)
@@ -1351,8 +1356,6 @@ int addToBTree(BTree* tree, BTKey* searchKey, size_t length, unsigned char* cont
     
     offset = 14;
     freeOffset = offset + sizeof(searchKey->keyLength) + searchKey->keyLength + length;
-    /* // XXX why? */
-    /* freeOffset += 1; */
     
     ASSERT(WRITE_KEY(tree, tree->headerRec->rootNode * tree->headerRec->nodeSize + offset, searchKey, tree->io), "WRITE_KEY");    
     ASSERT(WRITE(tree->io, tree->headerRec->rootNode * tree->headerRec->nodeSize + offset + sizeof(searchKey->keyLength) + searchKey->keyLength,

@@ -236,7 +236,7 @@ BLKXTable* insertBLKX(AbstractFile* out, AbstractFile* in, uint32_t firstSectorN
 		have = bufferSize - strm.avail_out;
 
 		// TODO: what about when sectors align badly?
-		bool keepRaw = NULL != FindStrInBuf(inBuffer, amountRead, "attr-value-");
+		bool keepRaw = NULL != FindStrInBuf(inBuffer, amountRead, "__MOZILLA__");
 		printf("keepRaw = %d (%p, %d)\n", keepRaw, inBuffer, amountRead);
 
 		if(keepRaw || ((have / SECTOR_SIZE) >= (blkx->runs[curRun].sectorCount - 15))) {
