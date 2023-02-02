@@ -134,7 +134,7 @@ BLKXTable* insertBLKX(AbstractFile* out, AbstractFile* in, uint32_t firstSectorN
 				in->seek(in, startOff + (blkx->sectorCount - numSectors + processed) * SECTOR_SIZE);
 				ASSERT((amountRead = in->read(in, inBuffer, blkx->runs[curRun].sectorCount * SECTOR_SIZE)) == (blkx->runs[curRun].sectorCount * SECTOR_SIZE), "mRead");
 
-				if(!addComment)
+				if(true || !addComment)
 					break;
 
 				processed += amountRead / SECTOR_SIZE;
