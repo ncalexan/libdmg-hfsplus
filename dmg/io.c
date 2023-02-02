@@ -53,6 +53,9 @@ BLKXTable* insertBLKX(AbstractFile* out, AbstractFile* in, uint32_t firstSectorN
 	size_t have;
 	int ret;
 
+	printf("Start of insertBLKX: uncompressed CRC32: %x\n", ((ChecksumToken*) uncompressedChkToken)->crc);
+	printf("Start of insertBLKX: uncompressed SHA1: %x\n", ((ChecksumToken*) uncompressedChkToken)->sha1.state[0]);
+
 	int IGNORE_THRESHOLD = 100000;
 
 	bz_stream strm;
@@ -212,15 +215,17 @@ BLKXTable* insertBLKX(AbstractFile* out, AbstractFile* in, uint32_t firstSectorN
 			}
 		}
 
-		printf("run %d: sectors=%" PRId64 ", left=%d\n", curRun, blkx->runs[curRun].sectorCount, numSectors);
+		// printf("run %d: sectors=%" PRId64 ", left=%d\n", curRun, blkx->runs[curRun].sectorCount, numSectors);
 
 		ASSERT(BZ2_bzCompressInit(&strm, 9, 0, 0) == BZ_OK, "BZ2_bzCompressInit");
 
 		strm.avail_in = amountRead;
 		strm.next_in = (char*)inBuffer;
 
-		if(uncompressedChk)
+		if(uncompressedChk) {
 			(*uncompressedChk)(uncompressedChkToken, inBuffer, blkx->runs[curRun].sectorCount * SECTOR_SIZE);
+			// printf("uncompressed CRC32: %x (%d)\n", ((ChecksumToken*) uncompressedChkToken)->crc, blkx->runs[curRun].sectorCount * SECTOR_SIZE);
+		}
 
 		blkx->runs[curRun].compOffset = out->tell(out) - blkx->dataStart;
 		blkx->runs[curRun].compLength = 0;
@@ -236,14 +241,17 @@ BLKXTable* insertBLKX(AbstractFile* out, AbstractFile* in, uint32_t firstSectorN
 		have = bufferSize - strm.avail_out;
 
 		// TODO: what about when sectors align badly?
-		bool keepRaw = NULL != FindStrInBuf(inBuffer, amountRead, "__MOZILLA__");
+		bool keepRaw = true; // NULL != FindStrInBuf(inBuffer, amountRead, "attr-value-");
+		// bool keepRaw = NULL != FindStrInBuf(inBuffer, amountRead, "__MOZILLA__");
 		printf("keepRaw = %d (%p, %d)\n", keepRaw, inBuffer, amountRead);
 
 		if(keepRaw || ((have / SECTOR_SIZE) >= (blkx->runs[curRun].sectorCount - 15))) {
 			printf("Setting type = BLOCK_RAW\n");
 			blkx->runs[curRun].type = BLOCK_RAW;
-			ASSERT(out->write(out, inBuffer, blkx->runs[curRun].sectorCount * SECTOR_SIZE) == (blkx->runs[curRun].sectorCount * SECTOR_SIZE), "fwrite");
-			blkx->runs[curRun].compLength += blkx->runs[curRun].sectorCount * SECTOR_SIZE;
+			ASSERT(out->write(out, inBuffer, amountRead) == amountRead, "fwrite");
+			blkx->runs[curRun].compLength += amountRead;
+			/* ASSERT(out->write(out, inBuffer, blkx->runs[curRun].sectorCount * SECTOR_SIZE) == (blkx->runs[curRun].sectorCount * SECTOR_SIZE), "fwrite"); */
+			/* blkx->runs[curRun].compLength += blkx->runs[curRun].sectorCount * SECTOR_SIZE; */
 
 			if(compressedChk)
 				(*compressedChk)(compressedChkToken, inBuffer, blkx->runs[curRun].sectorCount * SECTOR_SIZE);
@@ -257,6 +265,18 @@ BLKXTable* insertBLKX(AbstractFile* out, AbstractFile* in, uint32_t firstSectorN
 
 			blkx->runs[curRun].compLength += have;
 		}
+
+		printf("run %d: start=%" PRId64 " sectors=%" PRId64 ", length=%" PRId64 ", fileOffset=0x%" PRIx64 "\n",
+			   // i, initialOffset + (blkx->runs[i].sectorStart * SECTOR_SIZE), blkx->runs[i].sectorCount, blkx->runs[i].compLength, blkx->runs[i].compOffset
+			   curRun,
+			   startOff + (blkx->runs[curRun].sectorStart * SECTOR_SIZE),
+			   blkx->runs[curRun].sectorCount,
+			   blkx->runs[curRun].compLength,
+			   blkx->runs[curRun].compOffset
+			   );
+
+		printf("uncompressed CRC32: %x (%d)\n", ((ChecksumToken*) uncompressedChkToken)->crc, blkx->runs[curRun].sectorCount * SECTOR_SIZE);
+		printf("uncompressed SHA1: %x\n", ((ChecksumToken*) uncompressedChkToken)->sha1.state[0]);
 
 		BZ2_bzCompressEnd(&strm);
 
@@ -324,6 +344,13 @@ void extractBLKX(AbstractFile* in, AbstractFile* out, BLKXTable* blkx) {
 	ASSERT(initialOffset != -1, "ftello");
 
 	zero = 0;
+
+	ChecksumToken uncompressedChkToken;
+	memset(&uncompressedChkToken, 0, sizeof(ChecksumToken));
+	SHA1Init(&(uncompressedChkToken.sha1));
+
+	printf("Start of insertBLKX: uncompressed CRC32: %x\n", uncompressedChkToken.crc);
+	printf("Start of insertBLKX: uncompressed SHA1: %x\n", uncompressedChkToken.sha1.state[0]);
 
 	for(i = 0; i < blkx->blocksRunCount; i++) {
 		ASSERT(in->seek(in, blkx->dataStart + blkx->runs[i].compOffset) == 0, "fseeko");
@@ -402,6 +429,13 @@ void extractBLKX(AbstractFile* in, AbstractFile* out, BLKXTable* blkx) {
 				} else {
 					ASSERT((have = in->read(in, inBuffer, blkx->runs[i].compLength)) == blkx->runs[i].compLength, "fread");
 					ASSERT(out->write(out, inBuffer, have) == have, "mWrite");
+
+					/* if(uncompressedChk) { */
+					/* 	(*uncompressedChk)(uncompressedChkToken, inBuffer, blkx->runs[curRun].sectorCount * SECTOR_SIZE); */
+					
+					BlockSHA1CRC(&uncompressedChkToken, inBuffer, have);
+					printf("uncompressed CRC32: %x (%d)\n", uncompressedChkToken.crc, blkx->runs[i].compLength);
+					printf("uncompressed SHA1: %x\n", uncompressedChkToken.sha1.state[0]);
 				}
 				break;
 			case BLOCK_IGNORE:

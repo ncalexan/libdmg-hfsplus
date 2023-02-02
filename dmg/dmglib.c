@@ -152,7 +152,7 @@ int buildDmg(AbstractFile* abstractIn, AbstractFile* abstractOut, unsigned int B
 				pNum, CHECKSUM_UDIF_CRC32, &BlockSHA1CRC, &uncompressedToken, &CRCProxy, &dataForkToken, volume, 1);
 	
 	blkx->checksum.data[0] = uncompressedToken.crc;
-	printf("Inserting main blkx...\n"); fflush(stdout);
+	printf("Inserting main blkx... (uncompressed CRC32: %x)\n", uncompressedToken.crc); fflush(stdout);
 
 	char pName[100];
 	sprintf(pName, "Mac_OS_X (Apple_HFSX : %d)", pNum + 1);	
