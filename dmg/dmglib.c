@@ -1,6 +1,7 @@
 #include <string.h>
 #include "common.h"
 #include "abstractfile.h"
+#include <dmg/attribution.h>
 #include <dmg/dmg.h>
 #include <dmg/dmgfile.h>
 
@@ -87,7 +88,7 @@ uint32_t calculateMasterChecksum(ResourceKey* resources) {
 	return result;  
 }
 
-int buildDmg(AbstractFile* abstractIn, AbstractFile* abstractOut, unsigned int BlockSize) {	
+int buildDmg(AbstractFile* abstractIn, AbstractFile* abstractOut, unsigned int BlockSize, const char* sentinel) {
 	io_func* io;
 	Volume* volume;  
 	
@@ -147,8 +148,25 @@ int buildDmg(AbstractFile* abstractIn, AbstractFile* abstractOut, unsigned int B
 	printf("Writing main data blkx...\n"); fflush(stdout);
 	
 	abstractIn->seek(abstractIn, 0);
+
+	AbstractAttribution* attribution = NULL;
+	if (sentinel) {
+		attribution = createAbstractAttributionPreservingSentinel(sentinel);
+	}
+
+	if (attribution) {
+		attribution->beforeMainBlkx(attribution, abstractOut, &dataForkToken);
+	}
+
 	blkx = insertBLKX(abstractOut, abstractIn, USER_OFFSET, (volumeHeader->totalBlocks * volumeHeader->blockSize)/SECTOR_SIZE,
-				pNum, CHECKSUM_UDIF_CRC32, &BlockSHA1CRC, &uncompressedToken, &CRCProxy, &dataForkToken, volume, 1);
+				pNum, CHECKSUM_UDIF_CRC32, &BlockSHA1CRC, &uncompressedToken, &CRCProxy, &dataForkToken, volume, 0, attribution);
+
+	AttributionResource attributionResource;
+	memset(&attributionResource, 0, sizeof(AttributionResource));
+
+	if (attribution) {
+		attribution->afterMainBlkx(attribution, abstractOut, &dataForkToken, &attributionResource);
+	}
 	
 	blkx->checksum.data[0] = uncompressedToken.crc;
 	printf("Inserting main blkx...\n"); fflush(stdout);
@@ -215,8 +233,54 @@ int buildDmg(AbstractFile* abstractIn, AbstractFile* abstractOut, unsigned int B
 	curResource->next = makeSize(volumeHeader);
 	curResource = curResource->next;
 	
+
+	// Write attribution resource last.
+	if (attribution) {
+		printf("Inserting attribution resource...\n"); fflush(stdout);
+		resources = insertData(resources, "attribution", 2, "", (const char*) (&attributionResource), sizeof(attributionResource), 0);
+	}
+
+	ResourceKey* filteredResources = NULL;
+	ResourceKey* filteredResource = NULL;
+	if (attribution) {
+		// Attributable DMGs don't include resources that are not required (and
+		// that change with the DMG content).
+
+		ResourceKey* curResource = resources;
+		while (curResource != NULL) {
+			const unsigned char* key = curResource->key;
+			printf("key: %s\n", key);
+
+			ResourceKey* nextResource = curResource->next;
+
+			if (strstr((const char*)key, "attribution") ||
+				strstr((const char*)key, "blkx") ||
+				strstr((const char*)key, "plst")) {
+				printf("insertData: keeping key=%s\n", key);
+				if (!filteredResource) {
+					filteredResources = curResource;
+					filteredResource = curResource;
+				} else {
+					filteredResource->next = curResource;
+					filteredResource = filteredResource->next;
+					filteredResource->next = NULL;
+				}
+			}
+
+			curResource = nextResource;
+		}
+
+		filteredResource = filteredResources;
+		while (filteredResource != NULL) {
+			printf("kept key: %s\n", filteredResource->key);
+			filteredResource = filteredResource->next;
+		}
+	} else {
+		filteredResources = resources;
+	}
+
 	plistOffset = abstractOut->tell(abstractOut);
-	writeResources(abstractOut, resources);
+	writeResources(abstractOut, filteredResources);
 	plistSize = abstractOut->tell(abstractOut) - plistOffset;
 	
 	printf("Generating UDIF metadata...\n"); fflush(stdout);
@@ -353,7 +417,7 @@ int convertToDMG(AbstractFile* abstractIn, AbstractFile* abstractOut) {
 			
 			abstractIn->seek(abstractIn, partitions[i].pmPyPartStart * BlockSize);
 			blkx = insertBLKX(abstractOut, abstractIn, partitions[i].pmPyPartStart, partitions[i].pmPartBlkCnt, i, CHECKSUM_UDIF_CRC32,
-						&BlockCRC, &uncompressedToken, &CRCProxy, &dataForkToken, NULL, 1);
+						&BlockCRC, &uncompressedToken, &CRCProxy, &dataForkToken, NULL, 1, NULL);
 			
 			blkx->checksum.data[0] = uncompressedToken.crc;	
 			resources = insertData(resources, "blkx", i, partitionName, (const char*) blkx, sizeof(BLKXTable) + (blkx->blocksRunCount * sizeof(BLKXRun)), ATTRIBUTE_HDIUTIL);
@@ -394,7 +458,7 @@ int convertToDMG(AbstractFile* abstractIn, AbstractFile* abstractOut) {
 		
 		abstractIn->seek(abstractIn, 0);
 		blkx = insertBLKX(abstractOut, abstractIn, 0, fileLength/SECTOR_SIZE, ENTIRE_DEVICE_DESCRIPTOR, CHECKSUM_UDIF_CRC32,
-					&BlockCRC, &uncompressedToken, &CRCProxy, &dataForkToken, NULL, 1);
+					&BlockCRC, &uncompressedToken, &CRCProxy, &dataForkToken, NULL, 1, NULL);
 		blkx->checksum.data[0] = uncompressedToken.crc;
 		resources = insertData(resources, "blkx", 0, "whole disk (unknown partition : 0)", (const char*) blkx, sizeof(BLKXTable) + (blkx->blocksRunCount * sizeof(BLKXRun)), ATTRIBUTE_HDIUTIL);
 		free(blkx);

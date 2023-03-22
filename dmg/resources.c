@@ -122,6 +122,18 @@ static void flipCSumResource(unsigned char* data, char out) {
   FLIPENDIANLE(cSum->checksum);
 }
 
+static void flipAttributionResource(unsigned char* data, char out) {
+  AttributionResource* attribution;
+  attribution = (AttributionResource*) data;
+
+  printf("flipAttributionResource befor: %d, 0x%llx, 0x%llx, rawChecksum=0x%x\n", attribution->version, attribution->rawPos, attribution->rawLength, attribution->rawChecksum);
+  FLIPENDIANLE(attribution->version);
+  FLIPENDIANLE(attribution->rawPos);
+  FLIPENDIANLE(attribution->rawLength);
+  FLIPENDIANLE(attribution->rawChecksum);
+  // XXX: not done.
+  printf("flipAttributionResource after: %d, 0x%llx, 0x%llx, rawChecksum=0x%x\n", attribution->version, attribution->rawPos, attribution->rawLength, attribution->rawChecksum);
+}
 
 static void flipBLKXRun(BLKXRun* data) {
   BLKXRun* run;
@@ -622,6 +634,8 @@ ResourceKey* readResources(char* xml, size_t length) {
       curResource->flipData = &flipSizeResource;
     } else if(strcmp((char*) curResource->key, "cSum") == 0) {
       curResource->flipData = &flipCSumResource;
+    } else if(strcmp((char*) curResource->key, "attribution") == 0) {
+      curResource->flipData = &flipAttributionResource;
     }
     
     curLoc = strstr(curLoc, "<dict>");
@@ -803,6 +817,8 @@ ResourceKey* insertData(ResourceKey* resources, const char* key, int id, const c
       curResource->flipData = &flipSizeResource;
     } else if(strcmp((char*) curResource->key, "cSum") == 0) {
       curResource->flipData = &flipCSumResource;
+    } else if(strcmp((char*) curResource->key, "attribution") == 0) {
+      curResource->flipData = &flipAttributionResource;
     } else {
       curResource->flipData = NULL;
     }

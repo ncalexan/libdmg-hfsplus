@@ -7,6 +7,7 @@
 
 #include <hfs/hfsplus.h>
 #include "abstractfile.h"
+#include "attribution.h"
 #include "common.h"
 
 #define CHECKSUM_UDIF_CRC32 0x00000002
@@ -325,11 +326,11 @@ extern "C" {
 	void extractBLKX(AbstractFile* in, AbstractFile* out, BLKXTable* blkx);
 	BLKXTable* insertBLKX(AbstractFile* out, AbstractFile* in, uint32_t firstSectorNumber, uint32_t numSectors, uint32_t blocksDescriptor,
 	            uint32_t checksumType, ChecksumFunc uncompressedChk, void* uncompressedChkToken, ChecksumFunc compressedChk,
-	            void* compressedChkToken, Volume* volume, int addComment);
+				void* compressedChkToken, Volume* volume, int addComment, AbstractAttribution* attribution);
 
 
 	int extractDmg(AbstractFile* abstractIn, AbstractFile* abstractOut, int partNum);
-	int buildDmg(AbstractFile* abstractIn, AbstractFile* abstractOut, unsigned int BlockSize);
+	int buildDmg(AbstractFile* abstractIn, AbstractFile* abstractOut, unsigned int BlockSize, const char* sentinel);
 	int convertToISO(AbstractFile* abstractIn, AbstractFile* abstractOut);
 	int convertToDMG(AbstractFile* abstractIn, AbstractFile* abstractOut);
 #ifdef __cplusplus
